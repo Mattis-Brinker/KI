@@ -6,7 +6,7 @@ from collections import deque
 def info() -> typing.Dict:
     return {
         "apiversion": "1",
-        "author": "philipp-ai",
+        "author": "philipp",
         "color": "#00ff00",
         "head": "beluga",
         "tail": "bolt",
