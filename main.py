@@ -1,303 +1,287 @@
-# Welcome to
-# __________         __    __  .__                               __
-# \______   \_____ _/  |__/  |_|  |   ____   ______ ____ _____  |  | __ ____
-#  |    |  _/\__  \\   __\   __\  | _/ __ \ /  ___//    \\__  \ |  |/ // __ \
-#  |    |   \ / __ \|  |  |  | |  |_\  ___/ \___ \|   |  \/ __ \|    <\  ___/
-#  |________/(______/__|  |__| |____/\_____>______>___|__(______/__|__\\_____>
-#
-# This file can be a nice home for your Battlesnake logic and helper functions.
-#
-# To get you started we've included code to prevent your Battlesnake from moving backwards.
-# For more info see docs.battlesnake.com
-
 import random
 import typing
+import heapq
 from collections import deque
 
-# info is called when you create your Battlesnake on play.battlesnake.com
-# and controls your Battlesnake's appearance
-# TIP: If you open your Battlesnake URL in a browser you should see this data
 def info() -> typing.Dict:
-    print("INFO")
-
     return {
         "apiversion": "1",
-        "author": "Philipp Schubert",  # TODO: Your Battlesnake Username
-        "color": "#0000ff",  # TODO: Choose color
-        "head": "alligator",  # TODO: Choose head
-        "tail": "default",  # TODO: Choose tail
+        "author": "philipp-ai",
+        "color": "#00ff00",
+        "head": "beluga",
+        "tail": "bolt",
     }
 
-
-# start is called when your Battlesnake begins a game
 def start(game_state: typing.Dict):
     print("GAME START")
 
-
-# end is called when your Battlesnake finishes a game
 def end(game_state: typing.Dict):
-    print("GAME OVER\n")
+    print("GAME OVER")
 
-
-# move is called on every turn and returns your next move
-# Valid moves are "up", "down", "left", or "right"
-# See https://docs.battlesnake.com/api/example-move for available data
 def move(game_state: typing.Dict) -> typing.Dict:
-    # print(game_state)
-    hp = game_state["you"]["health"]
-    is_move_safe = {"up": True, "down": True, "left": True, "right": True}
-
-    # no eating nek
-    my_head_x = game_state["you"]["body"][0]["x"]  # Coordinates of your head
-    my_neck_x = game_state["you"]["body"][1]["x"]  # Coordinates of your "neck"
-    my_head_y = game_state["you"]["body"][0]["y"]  # Coordinates of your head
-    my_neck_y = game_state["you"]["body"][1]["y"]  # Coordinates of your "neck"
-    if my_neck_x < my_head_x:  # Neck is left of head, don't move left
-        is_move_safe["left"] = False
-    elif my_neck_x > my_head_x:  # Neck is right of head, don't move right
-        is_move_safe["right"] = False
-    elif my_neck_y < my_head_y:  # Neck is below head, don't move down
-        is_move_safe["down"] = False
-    elif my_neck_y > my_head_y:  # Neck is above head, don't move up
-        is_move_safe["up"] = False
-
-    # Prvents Snaking from colliding with walls
-    board_width = game_state['board']['width']
-    board_height = game_state['board']['height']
-    if my_head_x == 0:
-        is_move_safe["left"] = False
-
-    if my_head_x == board_width - 1:
-        is_move_safe["right"] = False
-
-    if my_head_y == 0:
-        is_move_safe["down"] = False
-
-    if my_head_y == board_height - 1:
-        is_move_safe["up"] = False
-
-    # Prevents Snaking from colliding with itself
-
-    # TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-    # opponents = game_state['board']['snakes']
-    # Vermeidungs von Kollision mit anderen Schlangen
-    opponents = game_state['board']['snakes']
-    for snake in opponents:
-        for segment in snake['body']:
-            if segment['x'] == my_head_x and segment['y'] == my_head_y + 1:
-                is_move_safe["up"] = False
-            if segment['x'] == my_head_x and segment['y'] == my_head_y - 1:
-                is_move_safe["down"] = False
-            if segment['x'] == my_head_x + 1 and segment['y'] == my_head_y:
-                is_move_safe["right"] = False
-            if segment['x'] == my_head_x - 1 and segment['y'] == my_head_y:
-                is_move_safe["left"] = False
-
-    my_length = game_state['you']['length']
-    for snake in opponents:
-        if snake["id"] == game_state["you"]["id"]:
-            continue
-        opponent_head = snake["body"][0]
-        opponent_length = snake["length"]
-        for direction, (dx, dy) in {"up": (0, 1), "down": (0, -1), "left": (-1, 0), "right": (1, 0)}.items():
-            new_x = my_head_x + dx
-            new_y = my_head_y + dy
-            if abs(opponent_head["x"] - new_x) + abs(opponent_head["y"] - new_y) == 1:
-                if opponent_length >= my_length:
-                    is_move_safe[direction] = False
-
-
-
-    safe_moves = []
-    for move, isSafe in is_move_safe.items():
-        if isSafe:
-            safe_moves.append(move)
-
-    original_is_move_safe = is_move_safe.copy()
-    
-    # Gefährliche Felder von längeren oder gleich langen Gegnern
-    potential_threats = get_potential_enemy_head_moves(game_state)
-
-  
-    next_positions = {
-        "up":    (my_head_x, my_head_y + 1),
-        "down":  (my_head_x, my_head_y - 1),
-        "left":  (my_head_x - 1, my_head_y),
-        "right": (my_head_x + 1, my_head_y),
-    }
-    
-    for move, (x, y) in next_positions.items():
-        if (x, y) in potential_threats:
-            is_move_safe[move] = False
-
-    # Are there any safe moves left?
-    safe_moves = []
-    for move, isSafe in is_move_safe.items():
-        if isSafe:
-            safe_moves.append(move)
-
-    # Rechne safe_moves mit aktueller Logik
-    safe_moves = [move for move, safe in is_move_safe.items() if safe]
-
-    if not safe_moves:
-        print(f"MOVE {game_state['turn']}: No safe moves after threat checks! Using backup options.")
-        # Fallback auf "alte" sicheren Moves – auch wenn z.B. eigene Körperteile dabei sind
-        backup_moves = [move for move, safe in original_is_move_safe.items() if safe]
-        
-        if backup_moves:
-            return {"move": random.choice(backup_moves)}
-        else:
-            # Im äußersten Notfall
-            return {"move": "down"}
-    
-    if len(safe_moves) == 0:
-        print(
-            f"MOVE {game_state['turn']}: No safe moves detected! Moving down")
-        return {"move": "down"}
-        
-    # Choose move from safe choices or go for food if hp is low
-    if hp < 100:
-        print("hp low!")
-        next_move = go_food(safe_moves, game_state)
-    else:
-        next_move = choose_move(safe_moves, my_head_x, my_head_y, board_height)
-
-    print(f"MOVE {game_state['turn']}: {next_move}")
-    return {"move": next_move}
-
-
-def choose_move(safe_moves, my_head_x, my_head_y, board_height):
-    if my_head_x % 2 == 0:
-        return random.choice(safe_moves)
-    else:
-        print("op choice")
-        if my_head_y < board_height / 2:
-            if "right" in safe_moves:
-                return "right"
-            else:
-                return random.choice(safe_moves)
-        else:
-            if "left" in safe_moves:
-                return "left"
-            else:
-                return random.choice(safe_moves)
-
-'''
-def go_food(safe_moves, game_state):
-    print("debug1")
-    food = game_state['board']['food']
-    my_head = game_state['you']['body'][0]
-    print(food)
-    closest_food = food[0]
-    for f in food:
-        if distance(my_head, f) < distance(my_head, closest_food):
-            closest_food = f
-    if my_head['x'] < closest_food['x']:
-        if "right" in safe_moves:
-            return "right"
-        else:
-            print("cant move right")
-    elif my_head['x'] > closest_food['x']:
-        if "left" in safe_moves:
-            return "left"
-        else:
-            print("cant move left")
-    elif my_head['y'] < closest_food['y']:
-        if "up" in safe_moves:
-            return "up"
-        else:
-            print("cant move up")
-    elif my_head['y'] > closest_food['y']:
-        if "down" in safe_moves:
-            return "down"
-        else:
-            print("cant move down")
-'''
-def go_food(safe_moves, game_state):
-    board = game_state["board"]
-    food_list = board["food"]
     head = game_state["you"]["body"][0]
-    width = board["width"]
-    height = board["height"]
+    pos = (head["x"], head["y"])
 
-    # Baue Liste der gefährlichen Felder
-    dangerous = set()
-    for snake in board["snakes"]:
-        for segment in snake["body"]:
-            dangerous.add((segment["x"], segment["y"]))
+    # 🍎 Futterpfad wenn du der Schnellste bist
+    move_to_food = get_food_move(game_state)
+    if move_to_food:
+        print(f"🍎 Going for food: {move_to_food}")
+        return {"move": move_to_food}
 
-    # Ergänze gefährliche Felder um Kopf-an-Kopf-Risiken
-    dangerous.update(get_potential_enemy_head_moves(game_state))
+    moves = ["up", "down", "left", "right"]
+    evaluated_moves = []
 
-    # BFS
-    queue = deque()
-    queue.append((head["x"], head["y"], []))  
+    for move in moves:
+        new_pos = get_new_position(head, move)
+        if not is_safe(new_pos, game_state):
+            continue
 
-    visited = set()
-    visited.add((head["x"], head["y"]))
+        free = freedom_score(new_pos, game_state)
+        score = 0
+        score += get_food_score(new_pos, game_state)
+        score += 3 * nohead_score(new_pos, game_state)
+        score += free * 2
+        score += edge_penalty(new_pos, game_state)
 
-    directions = {
-        "up": (0, 1),
-        "down": (0, -1),
-        "left": (-1, 0),
-        "right": (1, 0),
-    }
+        if move_is_trap(new_pos, game_state):
+            score -= 30  # Malus statt Ausschluss
 
-    while queue:
-        x, y, path = queue.popleft()
+        my_tail = game_state["you"]["body"][-1]
+        if manhattan_distance_xy(new_pos, (my_tail["x"], my_tail["y"])) == 0:
+            score += 5
 
-        if {"x": x, "y": y} in food_list:
-            if path:
-                return path[0]
-            else:
-                return random.choice(safe_moves)
+        evaluated_moves.append((score, free, move))
 
-        for dir_name, (dx, dy) in directions.items():
-            nx, ny = x + dx, y + dy
-            if (
-                0 <= nx < width and
-                0 <= ny < height and
-                (nx, ny) not in visited and
-                (nx, ny) not in dangerous
-            ):
-                visited.add((nx, ny))
-                queue.append((nx, ny, path + [dir_name]))
+    # 🧠 Auswahllogik
+    if len(game_state["board"]["snakes"]) == 2:
+        print("🎯 Trap mode activated (1v1)")
+        trap_move = trap(game_state)
+        if trap_move:
+            return {"move": trap_move}
 
-    return random.choice(safe_moves) if safe_moves else "down"
+    if evaluated_moves:
+        best_move = max(evaluated_moves, key=lambda m: (m[0], m[1]))[2]
+        return {"move": best_move}
+    else:
+        legal_moves = [m for m in moves if is_safe(get_new_position(head, m), game_state)]
+        if legal_moves:
+            print("😬 No good move. Picking any legal move.")
+            return {"move": random.choice(legal_moves)}
+        else:
+            print("☠️ No legal move. Going down by default.")
+            return {"move": "down"}
 
-def distance(a, b):
-    return abs(a['x'] - b['x']) + abs(a['y'] - b['y'])
-    
-#Vermeidung von Kopf an Kopf Kollisionen
-def get_potential_enemy_head_moves(game_state):
-    danger_fields = set()
-    my_length = game_state["you"]["length"]
+# ---------- HEURISTIK -------------------
 
+def get_food_move(game_state):
+    head = game_state["you"]["body"][0]
+    pos = (head["x"], head["y"])
+    food_list = game_state["board"]["food"]
+
+    if not food_list:
+        return None
+
+    sorted_food = sorted(food_list, key=lambda f: manhattan_distance_xy(pos, (f["x"], f["y"])))
+
+    for food in sorted_food:
+        goal = (food["x"], food["y"])
+        path = a_star(game_state, pos, goal)
+
+        if path and len(path) > 0:
+            my_distance = len(path)
+            if getfoodenemies(food, my_distance, game_state):
+                continue
+            if freedom_score(goal, game_state) < 6:
+                continue
+            return get_direction(pos, path[0])
+
+    return None
+
+def get_food_score(pos, game_state):
+    food_list = game_state["board"]["food"]
+    if not food_list:
+        return 0
+
+    closest_food = min(food_list, key=lambda f: manhattan_distance_xy(pos, (f["x"], f["y"])))
+    my_path = a_star(game_state, pos, (closest_food["x"], closest_food["y"]))
+    if not my_path:
+        return 0
+
+    my_distance = len(my_path)
+    if getfoodenemies(closest_food, my_distance, game_state):
+        return 0
+
+    return max(20 - my_distance, 1)
+
+def getfoodenemies(food, my_distance, game_state):
+    food_pos = (food["x"], food["y"])
     for snake in game_state["board"]["snakes"]:
         if snake["id"] == game_state["you"]["id"]:
-            continue  # Skip yourself
+            continue
+        enemy_head = snake["body"][0]
+        path = a_star(game_state, (enemy_head["x"], enemy_head["y"]), food_pos)
+        if path and len(path) <= my_distance:
+            return True
+    return False
 
-        head = snake["body"][0]
-        length = snake["length"]
+def move_is_trap(pos, game_state):
+    return freedom_score(pos, game_state) < 10
 
-        possible_directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # up, down, right, left
+def trap(game_state):
+    head = game_state["you"]["body"][0]
+    enemy = [s for s in game_state["board"]["snakes"] if s["id"] != game_state["you"]["id"]][0]
+    enemy_head = enemy["body"][0]
+    moves = ["up", "down", "left", "right"]
+    best_move = None
+    best_score = float("-inf")
 
-        for dx, dy in possible_directions:
-            nx, ny = head["x"] + dx, head["y"] + dy
+    for move in moves:
+        new_pos = get_new_position(head, move)
+        if not is_safe(new_pos, game_state):
+            continue
 
-            # Prüfen ob Feld auf dem Board liegt
-            if 0 <= nx < game_state["board"]["width"] and 0 <= ny < game_state["board"]["height"]:
-                # Feld nur gefährlich, wenn Schlange >= gleich lang
-                if length >= my_length:
-                    danger_fields.add((nx, ny))
+        enemy_freedom = freedom_score((enemy_head["x"], enemy_head["y"]), game_state)
+        score = 0
+        score += freedom_score(new_pos, game_state)
+        score += -manhattan_distance_xy(new_pos, (enemy_head["x"], enemy_head["y"]))
+        score += edge_penalty(new_pos, game_state)
+        score += max(0, 10 - enemy_freedom)
 
-    return danger_fields
+        if score > best_score:
+            best_score = score
+            best_move = move
 
+    return best_move
 
+def edge_penalty(pos, game_state):
+    x, y = pos
+    width = game_state["board"]["width"]
+    height = game_state["board"]["height"]
+    if x == 0 or x == width - 1 or y == 0 or y == height - 1:
+        return -5
+    if x == 1 or x == width - 2 or y == 1 or y == height - 2:
+        return -2
+    return 0
 
-# Start server when `python main.py` is run
+def nohead_score(pos, game_state):
+    my_len = len(game_state["you"]["body"])
+    score = 0
+    for snake in game_state["board"]["snakes"]:
+        if snake["id"] == game_state["you"]["id"]:
+            continue
+        enemy_head = snake["body"][0]
+        enemy_len = len(snake["body"])
+        if manhattan_distance_xy(pos, (enemy_head["x"], enemy_head["y"])) == 1:
+            if enemy_len >= my_len:
+                return -100
+            else:
+                score += 100
+    return score
+
+def freedom_score(pos, game_state):
+    visited = set()
+    queue = deque([pos])
+    count = 0
+    while queue and count < 50:
+        x, y = queue.popleft()
+        if (x, y) in visited:
+            continue
+        visited.add((x, y))
+        count += 1
+        for dx, dy in [(0,1),(0,-1),(1,0),(-1,0)]:
+            nx, ny = x+dx, y+dy
+            if is_future_safe((nx, ny), game_state):
+                queue.append((nx, ny))
+    return count
+
+def is_future_safe(pos, game_state):
+    x, y = pos
+    width = game_state["board"]["width"]
+    height = game_state["board"]["height"]
+    if not (0 <= x < width and 0 <= y < height):
+        return False
+    for snake in game_state["board"]["snakes"]:
+        body = snake["body"]
+        segments = body[:-1]
+        for part in segments:
+            if part["x"] == x and part["y"] == y:
+                return False
+        tail = body[-1]
+        if tail["x"] == x and tail["y"] == y:
+            return True
+    return True
+
+# ---------- A* PATHFINDING -------------------
+
+def a_star(game_state, start, goal):
+    open_set = [(0, start)]
+    came_from = {}
+    g_score = {start: 0}
+    while open_set:
+        _, current = heapq.heappop(open_set)
+        if current == goal:
+            return reconstruct_path(came_from, current)
+        for dx, dy in [(0,1),(0,-1),(1,0),(-1,0)]:
+            neighbor = (current[0]+dx, current[1]+dy)
+            if not is_safe(neighbor, game_state):
+                continue
+            tentative_g = g_score[current] + 1
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f = tentative_g + manhattan_distance_xy(neighbor, goal)
+                heapq.heappush(open_set, (f, neighbor))
+    return None
+
+def reconstruct_path(came_from, current):
+    path = []
+    while current in came_from:
+        path.append(current)
+        current = came_from[current]
+    return path[::-1]
+
+# ---------- HILFSFUNKTIONEN -------------------
+
+def get_new_position(pos, move):
+    x, y = pos["x"], pos["y"]
+    return {
+        "up": (x, y + 1),
+        "down": (x, y - 1),
+        "left": (x - 1, y),
+        "right": (x + 1, y),
+    }[move]
+
+def get_direction(start, end):
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    if dx == 1: return "right"
+    if dx == -1: return "left"
+    if dy == 1: return "up"
+    if dy == -1: return "down"
+    return "down"
+
+def manhattan_distance_xy(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def is_safe(pos, game_state):
+    x, y = pos
+    if not (0 <= x < game_state["board"]["width"] and 0 <= y < game_state["board"]["height"]):
+        return False
+    for snake in game_state["board"]["snakes"]:
+        body = snake["body"]
+        segments = body[:-1] if snake["id"] == game_state["you"]["id"] else body
+        for part in segments:
+            if part["x"] == x and part["y"] == y:
+                return False
+    return True
+
+# ---------- SERVERSTART -------------------
+
 if __name__ == "__main__":
     from server import run_server
-
-    run_server({"info": info, "start": start, "move": move, "end": end})
-print
+    run_server({
+        "info": info,
+        "start": start,
+        "move": move,
+        "end": end,
+    })
