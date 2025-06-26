@@ -1,7 +1,22 @@
 from Helper import is_safe, get_direction, freedom_score
 
 def dead_end_bonus(move, new_pos, game_state):
-  """Bewertet Moves, die in eine Sackgasse führen, aber den besten Ausweg wählen."""
+  """
+    Bewertet einen Zug (Move), der in eine potenzielle Sackgasse führt.
+
+    Falls die Position kein Dead-End (Sackgasse) ist, wird ein hoher Bonus (200) vergeben.
+    Falls es eine Sackgasse ist, aber der Move in die Richtung des längsten verfügbaren Pfads zeigt, 
+    gibt es einen kleineren Bonus (100).
+    Andernfalls wird kein Bonus vergeben (0).
+
+    Args:
+        move (str): Die geplante Bewegungsrichtung ('up', 'down', 'left', 'right').
+        new_pos (tuple): Die Position, die mit diesem Move erreicht wird (x, y).
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        int: Bonuswert für diesen Zug (0, 100 oder 200).
+    """
   if not is_dead_end(new_pos, game_state):
       return 200
 
@@ -13,7 +28,18 @@ def dead_end_bonus(move, new_pos, game_state):
   return 0
 
 def is_dead_end(pos, game_state):
-  """Eine Sackgasse liegt vor, wenn der frei erreichbare Raum eng und abgeschlossen ist."""
+    """
+    Bestimmt, ob eine gegebene Position als Sackgasse zählt, sprich ob der verfügbare Raum nicht ausreicht um überleben zu können.
+
+    Eine Sackgasse liegt dann vor, wenn der verfügbare Raum kleiner als die eigene Schlangenlänge + 3 ist.
+
+    Args:
+        pos (tuple): Auf Sackgasse zu überprüfende Position (x, y).
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        bool: True, wenn die Position als Sackgasse eingestuft wird, sonst False.
+    """
   freedom = freedom_score(pos, game_state)
   my_length = len(game_state["you"]["body"])
   if freedom < my_length+3:
@@ -22,7 +48,18 @@ def is_dead_end(pos, game_state):
   return False
 
 def longest_path_in_area(start, game_state):
-  """Finde einen Pfad maximaler Länge im Bereich, den man von start aus erreichen kann."""
+  """
+    Findet den längstmöglichen beschlängelbaren Pfad von einer gegebenen Startposition aus,
+    unter Beachtung von Hindernissen (z. B. Schlangen, Wände), sprich es wird nur in "sichere" Felder gegangen. 
+    Dafür wird eine Tiefensuche (DFS) verwendet.
+
+    Args:
+        start (tuple): Startposition (x, y).
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        list: Der längste gefundene Pfad als Liste von Positionen [(x1, y1), (x2, y2), ...].
+    """
   visited = set()
   stack = [(start, [start])]
   longest_path = []
