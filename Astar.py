@@ -5,9 +5,22 @@ import heapq
 
 def get_food_move(game_state):
     """
-  Gibt ein Dictionary zurück: {'up': 5, 'left': 0, ...}
-  Jede Richtung bekommt Bonuspunkte, wenn sie auf dem Weg zum Futter liegt.
-  """
+    get_food_move bewertet mögliche Züge (Richtungen), um Futter auf dem Spielfeld zu erreichen.
+    
+    Es wird geprüft:
+    1. Ob ein Pfad zu einem Futter existiert.
+    2. Ob ein Gegner früher beim Futter sein könnte.
+    3. Ob am Ziel genügend Bewegungsfreiheit gegeben ist.
+
+    Gibt ein Dictionary mit Punktwerten für Richtungen zurück (z.B. {'up': 5, 'right': 3}).
+    Höhere Werte deuten auf bessere Züge in Richtung des Futters hin.
+
+    Args:
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        dict: Bewertungen der vier Richtungen ('up', 'down', 'left', 'right').
+    """
     head = game_state["you"]["body"][0]
     pos = (head["x"], head["y"])
     food_list = game_state["board"]["food"]
@@ -39,6 +52,18 @@ def get_food_move(game_state):
 
 
 def get_food_enemies(food, my_distance, game_state):
+    """
+    get_food_enemies prüft 2. der get_food_move Funktion, sprich ob andere 
+    Battlesnakes schneller oder gleich Schnell am Futter sein könnten. 
+
+    Args:
+        food (dict): Die Position eines bestimmten Futters.
+        my_distance (int): Die Länge des Pfads der eigenen Schlange zum Futter.
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        bool: True, wenn ein Gegner voraussichtlich schneller beim Futter sein ist.
+    """
     food_pos = (food["x"], food["y"])
     for snake in game_state["board"]["snakes"]:
         if snake["id"] == game_state["you"]["id"]:
@@ -51,6 +76,20 @@ def get_food_enemies(food, my_distance, game_state):
 
 
 def a_star(game_state, start, goal):
+    """
+    Führt eine A*-Pfadsuche von einer Startposition zu einem Ziel durch.
+
+    Berücksichtigt dabei Spielfeldgrenzen und gefährliche Positionen, indem die Funktion `is_safe` genutzt wird.
+
+    Args:
+        game_state (dict): Der aktuelle Spielzustand.
+        start (tuple): Startposition (a, b).
+        goal (tuple): Zielposition (x, y).
+
+    Returns:
+        list: Eine Liste von Positionen [(x1, y1), (x2, y2), ...], die den Pfad darstellen.
+              Gibt None zurück, falls kein Pfad zum Ziel gefunden wird.
+    """
     open_set = [(0, start)]
     came_from = {}
     g_score = {start: 0}
@@ -72,6 +111,16 @@ def a_star(game_state, start, goal):
 
 
 def reconstruct_path(came_from, current):
+    """
+    Rekonstruiert einen Pfad, von einer Zielposition ausgehend, zurück zum Startpunkt.
+
+    Args:
+        came_from (dict): Mapping von jeder, um das Futter zu erreichen, theoretisch besuchten Position auf ihre Vorgängerposition.
+        current (tuple): Die Endposition des Pfads, die Position, an der sich unser Schlangen Kopf momentan befindet.
+
+    Returns:
+        list: Der rekonstruierte Pfad als Liste von Positionen [(x1, y1), (x2, y2), ...] (vom Start, bis zum Ziel).
+    """
     path = []
     while current in came_from:
         path.append(current)
