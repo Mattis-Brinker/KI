@@ -2,6 +2,17 @@ from Helper import manhattan_dist
 
 
 def edge_penalty(pos, game_state):
+    """
+    Berechnet eine Strafwertung, wenn sich die Schlange am Rand des Spielfelds befindet.
+
+    Args:
+        pos (tuple): Zu bewertende Position (x, y).
+        game_state (dict): Aktueller Spielzustand mit "you" und "board".
+
+    Returns:
+        float: Negativer Strafwert (bis -5) basierend auf Abstand zur nächsten Ecke,
+               oder 0, wenn Sie sich nicht am Rand befindet.
+    """
     x, y = pos
     width = game_state["board"]["width"]
     height = game_state["board"]["height"]
@@ -18,6 +29,18 @@ def edge_penalty(pos, game_state):
     return 0
 
 def nohead_score(pos, game_state):
+    """
+    Bewertet eine Position basierend auf der Distanz zu feindlichen Schlangenköpfen, zur Vermeidung von Kollisionen.
+
+    Args:
+        pos (tuple): Zu bewertende Position (x, y).
+        game_state (dict):  Aktueller Spielzustand mit "you" und "board".
+
+    Returns:
+        int: Negativer Wert (-100), wenn eine Kopf-Kollision gleichlanger oder längerer Gegner möglich ist;
+             positiver Wert (+100) wenn eine Kopf-Kollision mit einer kürzeren Schlange möglich ist;
+             ansonsten 0.
+    """
   my_len = len(game_state["you"]["body"])
   score = 0
   for snake in game_state["board"]["snakes"]:
