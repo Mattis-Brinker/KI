@@ -9,6 +9,14 @@ from Astar import get_food_move, a_star
 
 
 def info() -> typing.Dict:
+    """
+    Gibt Meta-Informationen über die eigene Battlesnake zurück, damit unsere Schlange immer identifiziert werden kann.
+
+    Diese Informationen werden beim Start des Spiels vom Server abgefragt.
+
+    Returns:
+        dict: Informationen über Autor, API-Version, Farbe, Kopf- und Schwanztyp.
+    """
     return {
         "apiversion": "1",
         "author": "philipp",
@@ -19,14 +27,42 @@ def info() -> typing.Dict:
 
 
 def start(game_state: typing.Dict):
+    """
+    Wird zu Beginn eines Spiels einmalig aufgerufen.
+    Gibt "GAME START" aus. 
+    Args:
+        game_state (dict): Der initiale Spielzustand.
+    """
     print("GAME START")
 
 
 def end(game_state: typing.Dict):
+    """
+    Wird nach Spielende einmalig aufgerufen.
+    Gibt "GAME OVER" aus. 
+
+    Args:
+        game_state (dict): Der letzte bekannte Spielzustand.
+    """
     print("GAME OVER")
 
 
 def move(game_state: typing.Dict) -> typing.Dict:
+    """
+    Die Funktion move ist die Hauptlogik der Entscheidungsfindung der Schlange.
+
+    Bewertet alle vier möglichen Bewegungsrichtungen ('up', 'down', 'left', 'right').
+    Sie kombiniert dafür verschiedene Heuristiken (z. B. Futter, Freedom, Randabstand, Dead-Ends),
+    und wählt die beste Option.
+
+    Falls keine sichere oder sinnvolle Bewegung in eine der vier Richtungen gefunden wird, wird ein zufälliger, legaler Zug gewählt.
+
+    Args:
+        game_state (dict): Der aktuelle Spielzustand.
+
+    Returns:
+        dict: Der gewählte Zug in eine der Richtungen im Format {"move": "right"}.
+    """
     head = game_state["you"]["body"][0]
     pos = (head["x"], head["y"])
 
@@ -73,6 +109,9 @@ def move(game_state: typing.Dict) -> typing.Dict:
 # ---------- SERVERSTART -------------------
 
 if __name__ == "__main__":
+    """
+    Startet den Battlesnake-Server
+    """
     from server import run_server
     run_server({
         "info": info,
