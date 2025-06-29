@@ -30,28 +30,46 @@ def edge_penalty(pos, game_state):
 
 def nohead_score(pos, game_state):
     """
-    Bewertet eine Position basierend auf der Distanz zu feindlichen Schlangenköpfen, zur Vermeidung von Kollisionen.
+    Bewertet eine Position basierend auf der Distanz zu feindlichen Schlangenköpfen,
+    unter Berücksichtigung der Anzahl sicherer Züge des Gegners.
 
     Args:
         pos (tuple): Zu bewertende Position (x, y).
-        game_state (dict):  Aktueller Spielzustand mit "you" und "board".
+        game_state (dict): Aktueller Spielzustand mit "you" und "board".
 
     Returns:
-        int: Negativer Wert (-100), wenn eine Kopf-Kollision gleichlanger oder längerer Gegner möglich ist;
-             positiver Wert (+100) wenn eine Kopf-Kollision mit einer kürzeren Schlange möglich ist;
-             ansonsten 0.
+        float: Negativer Wert (-100 / n), wenn eine Kopf-Kollision mit gleichlanger oder längerer Schlange droht,
+               positiver Wert (+100 / n), wenn eine Kopf-Kollision mit kürzerer Schlange möglich ist,
+               geteilt durch Anzahl der sicheren Züge der gegnerischen Schlange (n).
+               Falls n = 0, wird 0 zurückgegeben.
     """
-  my_len = len(game_state["you"]["body"])
-  score = 0
-  for snake in game_state["board"]["snakes"]:
-      if snake["id"] == game_state["you"]["id"]:
-          continue
-      enemy_head = snake["body"][0]
-      enemy_len = len(snake["body"])
-      if manhattan_dist(pos, (enemy_head["x"], enemy_head["y"])) == 1:
-          if enemy_len >= my_len:
-              return -100
-          else:
-              score += 100
-  return score
+    my_len = len(game_state["you"]["body"])
+    score = 0
+
+    for snake in game_state["board"]["snakes"]:
+        if snake["id"] == game_state["you"]["id"]:
+            continue
+
+        enemy_head = (snake["body"][0]["x"], snake["body"][0]["y"])
+        enemy_len = len(snake["body"])
+        dist = manhattan_dist(pos, enemy_head)
+
+        if dist == 1:
+            
+            safe_moves = 0
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                next_pos = (enemy_head[0] + dx, enemy_head[1] + dy)
+                if is_safe(next_pos, game_state):
+                    safe_moves += 1
+
+            if safe_moves == 0:
+                return 0 
+
+            if enemy_len >= my_len:
+                score += -100 / safe_moves
+            else:
+                score += 100 / safe_moves
+
+    return score
+
 
