@@ -12,7 +12,7 @@ import heapq
 def get_food_move(game_state):
     """
     get_food_move bewertet mögliche Züge (Richtungen), um Futter auf dem Spielfeld zu erreichen.
-    
+
     Es wird geprüft:
     1. Ob ein Pfad zu einem Futter existiert.
     2. Ob ein Gegner früher beim Futter sein könnte.
