@@ -46,12 +46,12 @@ def is_dead_end(pos, game_state):
     Returns:
         bool: True, wenn die Position als Sackgasse eingestuft wird, sonst False.
     """
-  freedom = freedom_score(pos, game_state)
-  my_length = len(game_state["you"]["body"])
-  if freedom < my_length+3:
+    freedom = freedom_score(pos, game_state)
+    my_length = len(game_state["you"]["body"])
+    if freedom < my_length+3:
       # wenig Raum: potenziell gefährlich
-      return True
-  return False
+        return True
+    return False
 
 def longest_path_in_area(start, game_state):
   """
