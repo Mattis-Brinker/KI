@@ -25,7 +25,7 @@ def info() -> typing.Dict:
     """
     return {
         "apiversion": "1",
-        "author": "philipp",
+        "author": "Gruppe19",
         "color": "#00ff00",
         "head": "beluga",
         "tail": "bolt",
