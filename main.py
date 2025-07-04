@@ -1,3 +1,9 @@
+#Gruppe 19
+#Teilnehmer:
+#Rose, Lennnert 222201353
+#Schlüter, Theo Peter 222201541
+#Schubert, Philipp 220200128
+#Brinker, Mattis Paul 222200558
 import random
 import typing
 import heapq
