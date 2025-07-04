@@ -1,81 +1,143 @@
-#Gruppe 19
-#Teilnehmer:
-#Rose, Lennnert 222201353
-#Schlüter, Theo Peter 222201541
-#Schubert, Philipp 220200128
-#Brinker, Mattis Paul 222200558
-from Helper import manhattan_dist
+# Gruppe 19
+# Teilnehmer:
+# Rose, Lennnert 222201353
+# Schlüter, Theo Peter 222201541
+# Schubert, Philipp 220200128
+# Brinker, Mattis Paul 222200558
+
+from collections import deque
 
 
-def edge_penalty(pos, game_state):
+def get_new_position(pos, move):
     """
-    Berechnet eine Strafwertung, wenn sich die Schlange am Rand des Spielfelds befindet.
+    Bestimmt die neue Position nach einer Bewegung.
 
     Args:
-        pos (tuple): Zu bewertende Position (x, y).
-        game_state (dict): Aktueller Spielzustand mit "you" und "board".
+        pos (dict): Aktuelle Position als Dictionary mit Schlüsseln "x" und "y".
+        move (str): Bewegungsrichtung ("up", "down", "left" oder "right").
 
     Returns:
-        float: Negativer Strafwert (bis -5) basierend auf Abstand zur nächsten Ecke,
-               oder 0, wenn Sie sich nicht am Rand befindet.
+        tuple: Aktualisierte Koordinaten (x, y).
+    """
+    x, y = pos["x"], pos["y"]
+    return {
+        "up":    (x, y + 1),
+        "down":  (x, y - 1),
+        "left":  (x - 1, y),
+        "right": (x + 1, y),
+    }[move]
+
+
+def get_direction(start, end):
+    """
+    Bestimmt die Bewegungsrichtung von einem Start- zu einem Endpunkt.
+
+    Args:
+        start (tuple): Ausgangskoordinaten (x, y).
+        end   (tuple): Zielkoordinaten (x, y).
+
+    Returns:
+        str: Bewegungsrichtung ("up", "down", "left" oder "right").
+    """
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    if dx == 1:
+        return "right"
+    if dx == -1:
+        return "left"
+    if dy == 1:
+        return "up"
+    if dy == -1:
+        return "down"
+    # Fallback – sollte eigentlich nie auftreten
+    return "down"
+
+
+def manhattan_dist(a, b):
+    """
+    Berechnet die Manhattan-Distanz zwischen zwei Punkten.
+
+    Args:
+        a (tuple): Koordinaten des Startpunktes (x, y).
+        b (tuple): Koordinaten des Endpunktes (x, y).
+
+    Returns:
+        int: Abstand nach Manhattan-Metrik.
+    """
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def is_safe(pos, game_state):
+    """
+    Prüft, ob eine Position frei und innerhalb des Spielfelds liegt.
+
+    Args:
+        pos (tuple): Zu prüfende Position (x, y).
+        game_state (dict): Aktueller Spielzustand.
+
+    Returns:
+        bool: True, wenn sicher, sonst False.
     """
     x, y = pos
-    width = game_state["board"]["width"]
-    height = game_state["board"]["height"]
-
-    if x == 0 or x == width - 1 or y == 0 or y == height - 1:
-        corners = [(0, 0), (0, height - 1), (width - 1, 0), (width - 1, height - 1)]
-        min_corner_distance = min(abs(x - cx) + abs(y - cy) for (cx, cy) in corners)
-
-        max_distance = (width + height) // 2
-        penalty = -5 + (min_corner_distance / max_distance) * 5 
-
-        return penalty
-
-    return 0
-
-def nohead_score(pos, game_state):
-    """
-    Bewertet eine Position basierend auf der Distanz zu feindlichen Schlangenköpfen,
-    unter Berücksichtigung der Anzahl sicherer Züge des Gegners.
-
-    Args:
-        pos (tuple): Zu bewertende Position (x, y).
-        game_state (dict): Aktueller Spielzustand mit "you" und "board".
-
-    Returns:
-        float: Negativer Wert (-100 / n), wenn eine Kopf-Kollision mit gleichlanger oder längerer Schlange droht,
-               positiver Wert (+100 / n), wenn eine Kopf-Kollision mit kürzerer Schlange möglich ist,
-               geteilt durch Anzahl der sicheren Züge der gegnerischen Schlange (n).
-               Falls n = 0, wird 0 zurückgegeben.
-    """
-    my_len = len(game_state["you"]["body"])
-    score = 0
+    # Spielfeldgrenzen
+    if not (0 <= x < game_state["board"]["width"] and
+            0 <= y < game_state["board"]["height"]):
+        return False
 
     for snake in game_state["board"]["snakes"]:
-        if snake["id"] == game_state["you"]["id"]:
+        body = snake["body"]
+        # Eigener Schwanz ist erst ab nächstem Zug blockiert
+        segments = body[:-1] if snake["id"] == game_state["you"]["id"] else body
+        for part in segments:
+            if part["x"] == x and part["y"] == y:
+                return False
+
+    return True
+
+
+def tailchase(new_pos, game_state):
+    """
+    Gibt Bonus-Punkte, wenn der Zug auf den eigenen Schwanz führt.
+
+    Args:
+        new_pos (tuple): Neue Position (x, y).
+        game_state (dict): Aktueller Spielzustand.
+
+    Returns:
+        int: 25 bei Treffer, sonst 0.
+    """
+    my_tail = game_state["you"]["body"][-1]
+    if manhattan_dist(new_pos, (my_tail["x"], my_tail["y"])) == 0:
+        return 25
+    return 0
+
+
+def freedom_score(pos, game_state, limit=50):
+    """
+    Flood-Fill (BFS), um die freie Fläche ab einer Position zu zählen.
+
+    Args:
+        pos (tuple): Startpunkt (x, y).
+        game_state (dict): Aktueller Spielzustand.
+        limit (int): Maximale Felder (Laufzeitbeschränkung).
+
+    Returns:
+        int: Anzahl erreichbarer Felder (≤ limit).
+    """
+    visited = set()
+    queue = deque([pos])
+    count = 0
+
+    while queue and count < limit:
+        x, y = queue.popleft()
+        if (x, y) in visited:
             continue
+        visited.add((x, y))
+        count += 1
 
-        enemy_head = (snake["body"][0]["x"], snake["body"][0]["y"])
-        enemy_len = len(snake["body"])
-        dist = manhattan_dist(pos, enemy_head)
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) not in visited and is_safe((nx, ny), game_state):
+                queue.append((nx, ny))
 
-        if dist == 1:
-            
-            safe_moves = 0
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                next_pos = (enemy_head[0] + dx, enemy_head[1] + dy)
-                if is_safe(next_pos, game_state):
-                    safe_moves += 1
-
-            if safe_moves == 0:
-                return 0 
-
-            if enemy_len >= my_len:
-                score += -100 / safe_moves
-            else:
-                score += 100 / safe_moves
-
-    return score
-
-
+    return count
